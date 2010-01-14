@@ -1,0 +1,212 @@
+NAME
+    "ExtUtils::H2PM" - automatically generate perl modules to wrap C header
+    files
+
+DESCRIPTION
+    This module assists in generating wrappers around system functionallity,
+    such as "socket()" types or "ioctl()" calls, where the only interesting
+    features required are the values of some constants or layouts of
+    structures normally only known to the C header files. Rather than
+    writing an entire XS module just to contain some constants and
+    pack/unpack functions, this module allows the author to generate, at
+    module build time, a pure perl module containing constant declarations
+    and structure utility functions. The module then requires no XS module
+    to be loaded at run time.
+
+    In comparison to h2ph, "C::Scan::Constants", and so on, this module
+    works by generating a small C program containing "printf()" lines to
+    output the values of the constants, compiling it, and running it. This
+    allows it to operate without needing tricky syntax parsing or guessing
+    of the contents of C header files.
+
+    It can also automatically build pack/unpack functions for simple
+    structure layouts, whose members are all simple integer fields. It is
+    not intended as a full replacement of arbitrary code written in XS
+    modules. If structures should contain pointers, or require special
+    custom handling, then likely an XS module will need to be written.
+
+FUNCTIONS
+  module $name
+    Sets the name of the perl module to generate. This will apply a
+    "package" header.
+
+  include $file
+    Adds a file to the list of headers which will be included by the C
+    program, to obtain the constants or structures from
+
+  constant $name
+    Adds a numerical constant.
+
+  structure $name, %args
+    Adds a structure definition. This requires a named argument, "members".
+    This should be an ARRAY ref containing an even number of name-definition
+    pairs. The first of each pair should be a member name. The second should
+    be one of the following structure member definitions.
+
+    The following additional named arguments are also recognised:
+
+    *       pack_func => STRING
+
+    *       unpack_func => STRING
+
+            Use the given names for the generated pack or unpack functions.
+
+    The following structure member definitions are allowed:
+
+    *       member_numeric
+
+            The field contains a single signed or unsigned number. Its size
+            and signedness will be automatically detected.
+
+    The structure definition results in two new functions being created,
+    "pack_$name" and "unpack_$name", where $name is the name of the
+    structure (with the leading "struct" prefix stripped). These behave
+    similarly to the familiar functions such as "pack_sockaddr_in"; the
+    "pack_" function will take a list of fields and return a packed string,
+    the "unpack_" function will take a string and return a list of fields.
+
+  no_export, use_export, use_export_ok
+    Controls the export behaviour of the generated symbols. "no_export"
+    creates symbols that are not exported by their package, they must be
+    used fully- qualified. "use_export" creates symbols that are exported by
+    default. "use_export_ok" creates symbols that are exported if they are
+    specifically requested at "use" time.
+
+    The mode can be changed at any time to affect only the symbols that
+    follow it. It defaults to "use_export_ok".
+
+EXAMPLES
+    Normally this module would be used by another module at build time, to
+    construct the relevant constants and structure functions from system
+    headers.
+
+    For example, suppose your operating system defines a new type of socket,
+    which has its own packet and address families, and perhaps some new
+    socket options which are valid on this socket. We can build a module to
+    contain the relevant constants and structure functions by writing, for
+    example:
+
+     #!/usr/bin/perl
+
+     use ExtUtils::H2PM;
+ 
+     module "Socket::Moonlazer";
+
+     include "moon/lazer.h";
+
+     constant "AF_MOONLAZER";
+     constant "PF_MOONLAZER";
+
+     constant "SOL_MOONLAZER";
+
+     constant "MOONLAZER_POWER";
+     constant "MOONLAZER_WAVELENGTH";
+
+     structure "struct lazerwl",
+        members => [
+           lwl_nm_coarse => member_numeric,
+           lwl_nm_fine   => member_numeric,
+        ];
+
+    If we save this script as, say, lib/Socket/Moonlazer.pm.PL, then when
+    "ExtUtils::MakeMaker" or "Module::Build" come to build the module, they
+    will execute the script, and capture its output to store as
+    lib/Socket/Moonlazer.pm. Once installed, any other code can simply
+
+     use Socket::Moonlazer qw( AF_MOONLAZER );
+
+    to import a constant.
+
+    The method described above doesn't allow us any room to actually include
+    other code in the module. Perhaps, as well as these simple constants,
+    we'd like to include functions, documentation, etc... To allow this,
+    name the script instead something like lib/Socket/Moonlazer_const.pm.PL,
+    so that this is the name used for the generated output. The code can
+    then be included in the actual lib/Socket/Moonlazer.pm (which will just
+    be a normal perl module) by
+
+     package Socket::Moonlazer;
+
+     use Socket::Moonlazer_const;
+
+     sub get_power
+     {
+        getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER );
+     }
+
+     sub set_power
+     {
+        setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER, $_[1] );
+     }
+
+     sub get_wavelength
+     {
+        my $wl = getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH );
+        defined $wl or return;
+        unpack_lazerwl( $wl );
+     }
+
+     sub set_wavelength
+     {
+        my $wl = pack_lazerwl( $_[1], $_[2] );
+        setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH, $wl );
+     }
+
+     1;
+
+    Sometimes, the actual C structure layout may not exactly match the
+    semantics we wish to present to perl modules using this extension
+    wrapper. Socket address structures typically contain their address
+    family as the first member, whereas this detail isn't exposed by, for
+    example, the "sockaddr_in" and "sockaddr_un" functions. To cope with
+    this case, the low-level structure packing and unpacking functions can
+    be generated with a different name, and wrapped in higher-level
+    functions in the main code. For example, in Moonlazer_const.pm.PL:
+
+     no_export;
+
+     structure "struct sockaddr_ml",
+        pack_func   => "_pack_sockaddr_ml",
+        unpack_func => "_unpack_sockaddr_ml",
+        members => [
+           ml_family    => member_numeric,
+           ml_lat_deg   => member_numeric,
+           ml_long_deg  => member_numeric,
+           ml_lat_fine  => member_numeric,
+           ml_long_fine => member_numeric,
+        ];
+
+    This will generate a pack/unpack function pair taking or returning five
+    arguments; these functions will not be exported. In our main
+    Moonlazer.pm file we can wrap these to actually expose a different API:
+
+     sub pack_sockaddr_ml
+     {
+        @_ == 2 or croak "usage: pack_sockaddr_ml(lat, long)";
+        my ( $lat, $long ) = @_;
+
+        return _pack_sockaddr_ml( AF_MOONLAZER, int $lat, int $long,
+          ($lat - int $lat) * 1_000_000, ($long - int $long) * 1_000_000);
+     }
+
+     sub unpack_sockaddr_ml
+     {
+        my ( $family, $lat, $long, $lat_fine, $long_fine ) =
+           _unpack_sockaddr_ml( $_[0] );
+
+        $family == AF_MOONLAZER or croak "expected family AF_MOONLAZER";
+
+        return ( $lat + $lat_fine/1_000_000, $long + $long_fine/1_000_000 );
+     }
+
+TODO
+    *   Consider more flexible structure members. Perhaps string-like
+        members that wrap fixed-size "char" arrays. With strings comes the
+        requirement to have members that store a size. This requires
+        cross-referential members. And while we're at it it might be nice to
+        have constant members; fill in constants without consuming arguments
+        when packing, assert the right value on unpacking.
+
+AUTHOR
+    Paul Evans <leonerd@leonerd.org.uk>
+
