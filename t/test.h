@@ -10,3 +10,10 @@ struct point
 {
   int x, y;
 };
+
+struct msghdr
+{
+  int cmd;
+  char vers;
+  /* hope there's a hole here */
+};

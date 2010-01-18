@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 5;
+use Test::More tests => 6;
 use Test::Output qw( stdout_from );
 
 use ExtUtils::H2PM;
@@ -31,8 +31,8 @@ $code = stdout_from {
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/02structure-numeric.t
 
@@ -80,8 +80,8 @@ $code = stdout_from {
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/02structure-numeric.t
 
@@ -103,3 +103,38 @@ sub point_unpacking_function
 1;
 EOPERL
       'Structure with different function names' );
+
+$code = stdout_from {
+         module "TEST";
+         include "t/test.h", local => 1;
+         structure "struct msghdr",
+            members => [
+               cmd  => member_numeric,
+               vers => member_numeric,
+            ];
+         write_perl;
+      };
+
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
+package TEST;
+# This module was generated automatically by ExtUtils::H2PM from t/02structure-numeric.t
+
+push \@EXPORT_OK, 'pack_msghdr', 'unpack_msghdr';
+use Carp;
+
+sub pack_msghdr
+{
+   \@_ == 2 or croak "usage: pack_msghdr(cmd, vers)";
+   pack "l c x3", \@_;
+}
+
+sub unpack_msghdr
+{
+   length \$_[0] == 8 or croak "unpack_msghdr: expected 8 bytes";
+   unpack "l c x3", \$_[0];
+}
+
+1;
+EOPERL
+      'Structure with trailing padding' );

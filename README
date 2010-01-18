@@ -34,8 +34,15 @@ FUNCTIONS
     Adds a file to the list of headers which will be included by the C
     program, to obtain the constants or structures from
 
-  constant $name
+  constant $name, %args
     Adds a numerical constant.
+
+    The following additional named arguments are also recognised:
+
+    *       name => STRING
+
+            Use the given name for the generated constant function. If not
+            specified, the C name for the constant will be used.
 
   structure $name, %args
     Adds a structure definition. This requires a named argument, "members".
@@ -50,6 +57,13 @@ FUNCTIONS
     *       unpack_func => STRING
 
             Use the given names for the generated pack or unpack functions.
+
+    *       with_tail => BOOL
+
+            If true, the structure is a header with more data behind it. The
+            pack function takes an optional extra string value for the data
+            tail, and the unpack function will return an extra string value
+            containing it.
 
     The following structure member definitions are allowed:
 
@@ -90,66 +104,66 @@ EXAMPLES
 
      use ExtUtils::H2PM;
  
-     module "Socket::Moonlazer";
+     module "Socket::Moonlaser";
 
-     include "moon/lazer.h";
+     include "moon/laser.h";
 
-     constant "AF_MOONLAZER";
-     constant "PF_MOONLAZER";
+     constant "AF_MOONLASER";
+     constant "PF_MOONLASER";
 
-     constant "SOL_MOONLAZER";
+     constant "SOL_MOONLASER";
 
-     constant "MOONLAZER_POWER";
-     constant "MOONLAZER_WAVELENGTH";
+     constant "MOONLASER_POWER",      name => "POWER";
+     constant "MOONLASER_WAVELENGTH", name => "WAVELENGTH";
 
-     structure "struct lazerwl",
+     structure "struct laserwl",
         members => [
            lwl_nm_coarse => member_numeric,
            lwl_nm_fine   => member_numeric,
         ];
 
-    If we save this script as, say, lib/Socket/Moonlazer.pm.PL, then when
+    If we save this script as, say, lib/Socket/Moonlaser.pm.PL, then when
     "ExtUtils::MakeMaker" or "Module::Build" come to build the module, they
     will execute the script, and capture its output to store as
-    lib/Socket/Moonlazer.pm. Once installed, any other code can simply
+    lib/Socket/Moonlaser.pm. Once installed, any other code can simply
 
-     use Socket::Moonlazer qw( AF_MOONLAZER );
+     use Socket::Moonlaser qw( AF_MOONLASER );
 
     to import a constant.
 
     The method described above doesn't allow us any room to actually include
     other code in the module. Perhaps, as well as these simple constants,
     we'd like to include functions, documentation, etc... To allow this,
-    name the script instead something like lib/Socket/Moonlazer_const.pm.PL,
+    name the script instead something like lib/Socket/Moonlaser_const.pm.PL,
     so that this is the name used for the generated output. The code can
-    then be included in the actual lib/Socket/Moonlazer.pm (which will just
+    then be included in the actual lib/Socket/Moonlaser.pm (which will just
     be a normal perl module) by
 
-     package Socket::Moonlazer;
+     package Socket::Moonlaser;
 
-     use Socket::Moonlazer_const;
+     use Socket::Moonlaser_const;
 
      sub get_power
      {
-        getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER );
+        getsockopt( $_[0], SOL_MOONLASER, POWER );
      }
 
      sub set_power
      {
-        setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER, $_[1] );
+        setsockopt( $_[0], SOL_MOONLASER, POWER, $_[1] );
      }
 
      sub get_wavelength
      {
-        my $wl = getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH );
+        my $wl = getsockopt( $_[0], SOL_MOONLASER, WAVELENGTH );
         defined $wl or return;
-        unpack_lazerwl( $wl );
+        unpack_laserwl( $wl );
      }
 
      sub set_wavelength
      {
-        my $wl = pack_lazerwl( $_[1], $_[2] );
-        setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH, $wl );
+        my $wl = pack_laserwl( $_[1], $_[2] );
+        setsockopt( $_[0], SOL_MOONLASER, WAVELENGTH, $wl );
      }
 
      1;
@@ -161,7 +175,7 @@ EXAMPLES
     example, the "sockaddr_in" and "sockaddr_un" functions. To cope with
     this case, the low-level structure packing and unpacking functions can
     be generated with a different name, and wrapped in higher-level
-    functions in the main code. For example, in Moonlazer_const.pm.PL:
+    functions in the main code. For example, in Moonlaser_const.pm.PL:
 
      no_export;
 
@@ -178,14 +192,14 @@ EXAMPLES
 
     This will generate a pack/unpack function pair taking or returning five
     arguments; these functions will not be exported. In our main
-    Moonlazer.pm file we can wrap these to actually expose a different API:
+    Moonlaser.pm file we can wrap these to actually expose a different API:
 
      sub pack_sockaddr_ml
      {
         @_ == 2 or croak "usage: pack_sockaddr_ml(lat, long)";
         my ( $lat, $long ) = @_;
 
-        return _pack_sockaddr_ml( AF_MOONLAZER, int $lat, int $long,
+        return _pack_sockaddr_ml( AF_MOONLASER, int $lat, int $long,
           ($lat - int $lat) * 1_000_000, ($long - int $long) * 1_000_000);
      }
 
@@ -194,7 +208,7 @@ EXAMPLES
         my ( $family, $lat, $long, $lat_fine, $long_fine ) =
            _unpack_sockaddr_ml( $_[0] );
 
-        $family == AF_MOONLAZER or croak "expected family AF_MOONLAZER";
+        $family == AF_MOONLASER or croak "expected family AF_MOONLASER";
 
         return ( $lat + $lat_fine/1_000_000, $long + $long_fine/1_000_000 );
      }

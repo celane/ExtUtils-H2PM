@@ -1,6 +1,6 @@
 ---
 name: ExtUtils-H2PM
-version: 0.01
+version: 0.02
 author:
   - 'Paul Evans <leonerd@leonerd.org.uk>'
 abstract: automatically generate perl modules to wrap C header files
@@ -17,7 +17,7 @@ configure_requires:
 provides:
   ExtUtils::H2PM:
     file: lib/ExtUtils/H2PM.pm
-    version: 0.01
+    version: 0.02
 generated_by: Module::Build version 0.35
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html

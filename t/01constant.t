@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 6;
+use Test::More tests => 7;
 use Test::Output qw( stdout_from );
 
 use ExtUtils::H2PM;
@@ -23,8 +23,8 @@ $code = stdout_from {
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/01constant.t
 
@@ -46,13 +46,32 @@ is( evalordie("TEST::DEFINED_CONSTANT()" ),
 $code = stdout_from {
          module "TEST";
          include "t/test.h", local => 1;
+         constant "DEFINED_CONSTANT", name => "CONSTANT";
+         write_perl;
+      };
+
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
+package TEST;
+# This module was generated automatically by ExtUtils::H2PM from t/01constant.t
+
+push \@EXPORT_OK, 'CONSTANT';
+use constant CONSTANT => 10;
+
+1;
+EOPERL
+      'Simple constant renamed' );
+
+$code = stdout_from {
+         module "TEST";
+         include "t/test.h", local => 1;
          no_export;
          constant "DEFINED_CONSTANT";
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/01constant.t
 
@@ -69,8 +88,8 @@ $code = stdout_from {
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/01constant.t
 
@@ -87,8 +106,8 @@ $code = stdout_from {
          write_perl;
       };
 
-is( $code,
-      <<"EOPERL",
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/01constant.t
 

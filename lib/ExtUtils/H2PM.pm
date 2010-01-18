@@ -8,7 +8,7 @@ package ExtUtils::H2PM;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -121,19 +121,33 @@ sub include
    }
 }
 
-=head2 constant $name
+=head2 constant $name, %args
 
 Adds a numerical constant.
+
+The following additional named arguments are also recognised:
+
+=over 8
+
+=item * name => STRING
+
+Use the given name for the generated constant function. If not specified, the
+C name for the constant will be used.
+
+=back
 
 =cut
 
 sub constant
 {
-   my $name = shift;
+   my $constname = shift;
+   my %args = @_;
 
-   push @fragments, qq{  printf("$name=%ld\\n", (long)$name);};
+   my $name = $args{name} || $constname;
 
-   push @genblocks, [ $name => sub {
+   push @fragments, qq{  printf("$constname=%ld\\n", (long)$constname);};
+
+   push @genblocks, [ $constname => sub {
       my ( $result ) = @_;
       "use constant $name => $result;";
    } ];
@@ -158,6 +172,12 @@ The following additional named arguments are also recognised:
 
 Use the given names for the generated pack or unpack functions.
 
+=item * with_tail => BOOL
+
+If true, the structure is a header with more data behind it. The pack function
+takes an optional extra string value for the data tail, and the unpack
+function will return an extra string value containing it.
+
 =back
 
 =cut
@@ -170,6 +190,8 @@ sub structure
 
    my $packfunc   = $params{pack_func}   || "pack_$basename";
    my $unpackfunc = $params{unpack_func} || "unpack_$basename";
+
+   my $with_tail = $params{with_tail};
 
    my @membernames;
    my @memberhandlers;
@@ -192,25 +214,38 @@ sub structure
    push @fragments,
       "  {",
       "    $name $basename;", 
-    qq[    printf("$basename=");],
+    qq[    printf("$basename=%zu,", sizeof($basename));],
       ( map { "    " . $_->{gen_c}->() } @memberhandlers ),
     qq[    printf("\\n");],
       "  }";
 
    push @genblocks, [ $basename => sub {
       my ( $result ) = @_;
+      my @result = split m/,/, $result;
 
       my $curpos = 0;
 
       my $format = "";
 
-      foreach my $def ( split m/,/, $result ) {
+      my $sizeof = shift @result;
+
+      foreach my $def ( @result ) {
          my $handler = shift @memberhandlers;
 
          $format .= $handler->{gen_format}( $def, $curpos ) . " ";
       }
 
-      my $len = $curpos;
+      if( $curpos < $sizeof ) {
+         $format .= "x" . ( $sizeof - $curpos );
+      }
+
+      my $eq = "==";
+      if( $with_tail ) {
+         $format .= "a*";
+         $eq = ">=";
+         push @membernames, "[tail]";
+      }
+
       my $members = join( ", ", @membernames );
 
       my $carp = $done_carp++ ? "" : "use Carp;\n";
@@ -219,13 +254,13 @@ sub structure
          "",
          "sub $packfunc",
          "{",
-       qq[   \@_ == $argindex or croak "usage: $packfunc($members)";],
+       qq[   \@_ $eq $argindex or croak "usage: $packfunc($members)";],
        qq[   pack "$format", \@_;],
          "}",
          "",
          "sub $unpackfunc",
          "{", 
-       qq[   length \$_[0] == $len or croak "$unpackfunc: expected $len bytes";],
+       qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
        qq[   unpack "$format", \$_[0];],
          "}" );
    } ];
@@ -276,8 +311,8 @@ sub member_numeric
       set_arg => sub { $argindex = $_[0]++; },
 
       gen_c => sub {
-         qq{printf("$membername@%d+%d%c,", } . 
-            "((void*)&$varname.$membername-(void*)&$varname), " . # offset
+         qq{printf("$membername@%td+%zu%c,", } . 
+            "((char*)&$varname.$membername-(char*)&$varname), " . # offset
             "sizeof($varname.$membername), " .                    # size
             "($varname.$membername=-1)<0?'s':'u'" .               # signedness
             ");";
@@ -348,7 +383,7 @@ sub gen_perl
       "int main(void) {",
       @fragments,
       "  return 0;",
-      "}";
+      "}\n";
 
    undef @preamble;
    undef @fragments;
@@ -443,65 +478,65 @@ constants and structure functions by writing, for example:
 
  use ExtUtils::H2PM;
  
- module "Socket::Moonlazer";
+ module "Socket::Moonlaser";
 
- include "moon/lazer.h";
+ include "moon/laser.h";
 
- constant "AF_MOONLAZER";
- constant "PF_MOONLAZER";
+ constant "AF_MOONLASER";
+ constant "PF_MOONLASER";
 
- constant "SOL_MOONLAZER";
+ constant "SOL_MOONLASER";
 
- constant "MOONLAZER_POWER";
- constant "MOONLAZER_WAVELENGTH";
+ constant "MOONLASER_POWER",      name => "POWER";
+ constant "MOONLASER_WAVELENGTH", name => "WAVELENGTH";
 
- structure "struct lazerwl",
+ structure "struct laserwl",
     members => [
        lwl_nm_coarse => member_numeric,
        lwl_nm_fine   => member_numeric,
     ];
 
-If we save this script as, say, F<lib/Socket/Moonlazer.pm.PL>, then when
+If we save this script as, say, F<lib/Socket/Moonlaser.pm.PL>, then when
 C<ExtUtils::MakeMaker> or C<Module::Build> come to build the module, they will
 execute the script, and capture its output to store as
-F<lib/Socket/Moonlazer.pm>. Once installed, any other code can simply
+F<lib/Socket/Moonlaser.pm>. Once installed, any other code can simply
 
- use Socket::Moonlazer qw( AF_MOONLAZER );
+ use Socket::Moonlaser qw( AF_MOONLASER );
 
 to import a constant.
 
 The method described above doesn't allow us any room to actually include other
 code in the module. Perhaps, as well as these simple constants, we'd like to
 include functions, documentation, etc... To allow this, name the script
-instead something like F<lib/Socket/Moonlazer_const.pm.PL>, so that this is
+instead something like F<lib/Socket/Moonlaser_const.pm.PL>, so that this is
 the name used for the generated output. The code can then be included in the
-actual F<lib/Socket/Moonlazer.pm> (which will just be a normal perl module) by
+actual F<lib/Socket/Moonlaser.pm> (which will just be a normal perl module) by
 
- package Socket::Moonlazer;
+ package Socket::Moonlaser;
 
- use Socket::Moonlazer_const;
+ use Socket::Moonlaser_const;
 
  sub get_power
  {
-    getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER );
+    getsockopt( $_[0], SOL_MOONLASER, POWER );
  }
 
  sub set_power
  {
-    setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_POWER, $_[1] );
+    setsockopt( $_[0], SOL_MOONLASER, POWER, $_[1] );
  }
 
  sub get_wavelength
  {
-    my $wl = getsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH );
+    my $wl = getsockopt( $_[0], SOL_MOONLASER, WAVELENGTH );
     defined $wl or return;
-    unpack_lazerwl( $wl );
+    unpack_laserwl( $wl );
  }
 
  sub set_wavelength
  {
-    my $wl = pack_lazerwl( $_[1], $_[2] );
-    setsockopt( $_[0], SOL_MOONLAZER, MOONLAZER_WAVELENGTH, $wl );
+    my $wl = pack_laserwl( $_[1], $_[2] );
+    setsockopt( $_[0], SOL_MOONLASER, WAVELENGTH, $wl );
  }
 
  1;
@@ -513,7 +548,7 @@ whereas this detail isn't exposed by, for example, the C<sockaddr_in> and
 C<sockaddr_un> functions. To cope with this case, the low-level structure
 packing and unpacking functions can be generated with a different name, and
 wrapped in higher-level functions in the main code. For example, in
-F<Moonlazer_const.pm.PL>:
+F<Moonlaser_const.pm.PL>:
 
  no_export;
 
@@ -529,7 +564,7 @@ F<Moonlazer_const.pm.PL>:
     ];
 
 This will generate a pack/unpack function pair taking or returning five
-arguments; these functions will not be exported. In our main F<Moonlazer.pm>
+arguments; these functions will not be exported. In our main F<Moonlaser.pm>
 file we can wrap these to actually expose a different API:
 
  sub pack_sockaddr_ml
@@ -537,7 +572,7 @@ file we can wrap these to actually expose a different API:
     @_ == 2 or croak "usage: pack_sockaddr_ml(lat, long)";
     my ( $lat, $long ) = @_;
 
-    return _pack_sockaddr_ml( AF_MOONLAZER, int $lat, int $long,
+    return _pack_sockaddr_ml( AF_MOONLASER, int $lat, int $long,
       ($lat - int $lat) * 1_000_000, ($long - int $long) * 1_000_000);
  }
 
@@ -546,7 +581,7 @@ file we can wrap these to actually expose a different API:
     my ( $family, $lat, $long, $lat_fine, $long_fine ) =
        _unpack_sockaddr_ml( $_[0] );
 
-    $family == AF_MOONLAZER or croak "expected family AF_MOONLAZER";
+    $family == AF_MOONLASER or croak "expected family AF_MOONLASER";
 
     return ( $lat + $lat_fine/1_000_000, $long + $long_fine/1_000_000 );
  }
