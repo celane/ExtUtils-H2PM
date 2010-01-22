@@ -89,6 +89,20 @@ FUNCTIONS
     The mode can be changed at any time to affect only the symbols that
     follow it. It defaults to "use_export_ok".
 
+  $perl = gen_output
+    Returns the generated perl code. This is used internally for testing
+    purposes but normally would not be necessary; see instead
+    "write_output".
+
+  write_output $filename
+    Write the generated perl code into the named file. This would normally
+    be used as the last function in the containing script, to generate the
+    output file. In the case of "ExtUtils::MakeMaker" or "Module::Build"
+    invoking the script, the path to the file to be generated should be
+    given in $ARGV[0]. Normally, therefore, the script would end with
+
+     write_output $ARGV[0];
+
 EXAMPLES
     Normally this module would be used by another module at build time, to
     construct the relevant constants and structure functions from system
@@ -122,10 +136,12 @@ EXAMPLES
            lwl_nm_fine   => member_numeric,
         ];
 
+     write_output $ARGV[0];
+
     If we save this script as, say, lib/Socket/Moonlaser.pm.PL, then when
-    "ExtUtils::MakeMaker" or "Module::Build" come to build the module, they
-    will execute the script, and capture its output to store as
-    lib/Socket/Moonlaser.pm. Once installed, any other code can simply
+    the distribution is built, the script will be used to generate the
+    contents of the file lib/Socket/Moonlaser.pm. Once installed, any other
+    code can simply
 
      use Socket::Moonlaser qw( AF_MOONLASER );
 

@@ -1,5 +1,12 @@
 Revision history for ExtUtils-H2PM
 
+0.03    CHANGES:
+         * Avoid warning about comparing unsigned int < 0
+         * Removed evil action-at-a-distance END{} block; now users must call
+           write_output()
+         * Try to use Module::Build's configuration if present - useful for
+           include_dirs, extra_compiler_flags, extra_linker_flags
+
 0.02    CHANGES:
          * Allow structures to have a data tail; extra bytes at the end
          * Allow renaming of generated constant functions

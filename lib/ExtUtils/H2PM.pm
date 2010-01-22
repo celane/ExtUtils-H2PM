@@ -8,7 +8,7 @@ package ExtUtils::H2PM;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -21,7 +21,8 @@ our @EXPORT = qw(
 
    no_export use_export use_export_ok
 
-   write_perl
+   gen_output
+   write_output
 );
 
 use ExtUtils::CBuilder;
@@ -54,6 +55,8 @@ contain pointers, or require special custom handling, then likely an XS module
 will need to be written.
 
 =cut
+
+my $output = "";
 
 my @preamble;
 my @fragments;
@@ -92,11 +95,11 @@ sub module
 {
    $modulename = shift;
 
-   print gen_perl() if @fragments;
+   $output .= gen_perl() if @fragments;
 
-   print "package $modulename;\n" .
-         "# This module was generated automatically by ExtUtils::H2PM from $0\n" .
-         "\n";
+   $output .= "package $modulename;\n" .
+              "# This module was generated automatically by ExtUtils::H2PM from $0\n" .
+              "\n";
 
    undef $done_carp;
 }
@@ -314,14 +317,17 @@ sub member_numeric
          qq{printf("$membername@%td+%zu%c,", } . 
             "((char*)&$varname.$membername-(char*)&$varname), " . # offset
             "sizeof($varname.$membername), " .                    # size
-            "($varname.$membername=-1)<0?'s':'u'" .               # signedness
+            "($varname.$membername=-1)>0?'u':'s'" .               # signedness
             ");";
       },
       gen_format => sub {
          my ( $def ) = @_;
          #  ( undef, curpos ) = @_;
 
-         my ( $member, $offs, $size, $sign ) = $def =~ m/^(\w+)@(\d+)\+(\d+)([us])$/;
+         my ( $member, $offs, $size, $sign ) = $def =~ m/^(\w+)@(\d+)\+(\d+)([us])$/
+            or die "Could not parse member definition out of '$def'";
+
+         $member eq $membername or die "Expected definition of $membername but found $member instead";
 
          my $format = "";
          if( $offs > $_[1] ) {
@@ -333,6 +339,9 @@ sub member_numeric
          elsif( $offs < $_[1] ) {
             die "Err.. need to go backwards for structure $varname member $member";
          }
+
+         exists $struct_formats{"$size$sign"} or
+            die "Cannot find a pack format for size $size sign $sign";
 
          $format .= $struct_formats{"$size$sign"};
          $_[1] += $size;
@@ -371,6 +380,15 @@ sub use_export    { $export_mode = 1 }
 sub use_export_ok { $export_mode = "OK" }
 
 my $cbuilder = ExtUtils::CBuilder->new( quiet => 1 );
+my %compile_args;
+my %link_args;
+
+if( my $mb = eval { require Module::Build and Module::Build->current } ) {
+   $compile_args{include_dirs}         = $mb->include_dirs;
+   $compile_args{extra_compiler_flags} = $mb->extra_compiler_flags;
+
+   $link_args{extra_linker_flags} = $mb->extra_linker_flags;
+}
 
 sub gen_perl
 {
@@ -398,7 +416,7 @@ sub gen_perl
       print $source_fh $c_file;
    }
 
-   my $objname = eval { $cbuilder->compile( source => $sourcename ) };
+   my $objname = eval { $cbuilder->compile( source => $sourcename, %compile_args ) };
 
    unlink $sourcename;
 
@@ -406,7 +424,7 @@ sub gen_perl
       die "Failed to compile source\n";
    }
 
-   my $exename = eval { $cbuilder->link_executable( objects => $objname ) };
+   my $exename = eval { $cbuilder->link_executable( objects => $objname, %link_args ) };
 
    unlink $objname;
 
@@ -449,17 +467,41 @@ sub gen_perl
    return $perl;
 }
 
-sub write_perl
+=head2 $perl = gen_output
+
+Returns the generated perl code. This is used internally for testing purposes
+but normally would not be necessary; see instead C<write_output>.
+
+=cut
+
+sub gen_output
 {
-   print gen_perl . "\n1;\n";
+   my $ret = $output . gen_perl . "\n1;\n";
+   $output = "";
+
+   return $ret;
 }
 
-# Redirect STDOUT as EU::MM / M::B has directed us
-if( @ARGV ) {
-   open( STDOUT, ">", $ARGV[0] ) or die "Cannot write '$ARGV[0]' - $!";
-}
+=head2 write_output $filename
 
-END { write_perl if @fragments }
+Write the generated perl code into the named file. This would normally be used
+as the last function in the containing script, to generate the output file. In
+the case of C<ExtUtils::MakeMaker> or C<Module::Build> invoking the script,
+the path to the file to be generated should be given in C<$ARGV[0]>. Normally,
+therefore, the script would end with
+
+ write_output $ARGV[0];
+
+=cut
+
+sub write_output
+{ 
+   my ( $filename ) = @_;
+
+   open( my $outfile, ">", $filename ) or die "Cannot write '$filename' - $!";
+
+   print $outfile gen_output();
+}
 
 # Keep perl happy; keep Britain tidy
 1;
@@ -496,10 +538,11 @@ constants and structure functions by writing, for example:
        lwl_nm_fine   => member_numeric,
     ];
 
-If we save this script as, say, F<lib/Socket/Moonlaser.pm.PL>, then when
-C<ExtUtils::MakeMaker> or C<Module::Build> come to build the module, they will
-execute the script, and capture its output to store as
-F<lib/Socket/Moonlaser.pm>. Once installed, any other code can simply
+ write_output $ARGV[0];
+
+If we save this script as, say, F<lib/Socket/Moonlaser.pm.PL>, then when the
+distribution is built, the script will be used to generate the contents of the
+file F<lib/Socket/Moonlaser.pm>. Once installed, any other code can simply
 
  use Socket::Moonlaser qw( AF_MOONLASER );
 

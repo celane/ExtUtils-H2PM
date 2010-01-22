@@ -2,7 +2,6 @@
 
 use strict;
 use Test::More tests => 4;
-use Test::Output qw( stdout_from );
 
 use ExtUtils::H2PM;
 
@@ -20,7 +19,7 @@ sub evalordie
 
 my $code;
 
-$code = stdout_from {
+$code = do {
          module "TEST";
          include "t/test.h", local => 1;
          structure "struct msghdr",
@@ -29,13 +28,13 @@ $code = stdout_from {
                cmd  => member_numeric,
                vers => member_numeric,
             ];
-         write_perl;
+         gen_output;
       };
 
 is_deeply( [ split m/\n/, $code ],
     [ split m/\n/, <<"EOPERL" ],
 package TEST;
-# This module was generated automatically by ExtUtils::H2PM from t/03structure-tail.t
+# This module was generated automatically by ExtUtils::H2PM from $0
 
 push \@EXPORT_OK, 'pack_msghdr', 'unpack_msghdr';
 use Carp;
