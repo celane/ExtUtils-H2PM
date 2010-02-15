@@ -8,7 +8,9 @@ package ExtUtils::H2PM;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+use Carp;
+
+our $VERSION = '0.04';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -18,6 +20,7 @@ our @EXPORT = qw(
 
    structure
       member_numeric
+      member_strarray
 
    no_export use_export use_export_ok
 
@@ -49,10 +52,10 @@ operate without needing tricky syntax parsing or guessing of the contents of
 C header files.
 
 It can also automatically build pack/unpack functions for simple structure
-layouts, whose members are all simple integer fields. It is not intended as a
-full replacement of arbitrary code written in XS modules. If structures should
-contain pointers, or require special custom handling, then likely an XS module
-will need to be written.
+layouts, whose members are all simple integer or character array fields.
+It is not intended as a full replacement of arbitrary code written in XS
+modules. If structures should contain pointers, or require special custom
+handling, then likely an XS module will need to be written.
 
 =cut
 
@@ -181,6 +184,15 @@ If true, the structure is a header with more data behind it. The pack function
 takes an optional extra string value for the data tail, and the unpack
 function will return an extra string value containing it.
 
+=item * arg_style => STRING
+
+Defines the style in which the functions take arguments or return values.
+Defaults to C<list>, which take or return a list of values in the given order.
+The other allowed value is C<hashref>, where the pack function takes a HASH
+reference and the unpack function returns one. Each will consist of keys named
+after the structure members. If a data tail is included, it will use the hash
+key of C<_tail>.
+
 =back
 
 =cut
@@ -195,6 +207,8 @@ sub structure
    my $unpackfunc = $params{unpack_func} || "unpack_$basename";
 
    my $with_tail = $params{with_tail};
+
+   my $arg_style = $params{arg_style} || "list";
 
    my @membernames;
    my @memberhandlers;
@@ -246,26 +260,43 @@ sub structure
       if( $with_tail ) {
          $format .= "a*";
          $eq = ">=";
-         push @membernames, "[tail]";
       }
-
-      my $members = join( ", ", @membernames );
 
       my $carp = $done_carp++ ? "" : "use Carp;\n";
 
+      my ( @packcode, @unpackcode );
+      if( $arg_style eq "list" ) {
+         my $members = join( ", ", @membernames, ( $with_tail ? "[tail]" : () ) );
+
+         @packcode = (
+            qq[   \@_ $eq $argindex or croak "usage: $packfunc($members)";],
+            qq[   pack "$format", \@_;] );
+         @unpackcode = (
+            qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
+            qq[   unpack "$format", \$_[0];] );
+      }
+      elsif( $arg_style eq "hashref" ) {
+         my $qmembers = join( ", ", map { "'$_'" } @membernames, ( $with_tail ? "_tail" : () ) );
+
+         @packcode = (
+            qq[   ref(\$_[0]) eq "HASH" or croak "usage: $packfunc(\\%args)";],
+            qq[   pack "$format", \@{\$_[0]}{$qmembers};] );
+         @unpackcode = (
+            qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
+            # Seems we can't easily do this without a temporary
+            qq[   my %ret;],
+            qq[   \@ret{$qmembers} = unpack "$format", \$_[0];],
+            qq[   \\%ret;] );
+      }
+      else {
+         carp "Unrecognised arg_style $arg_style";
+      }
+
       $carp . join( "\n",
          "",
-         "sub $packfunc",
-         "{",
-       qq[   \@_ $eq $argindex or croak "usage: $packfunc($members)";],
-       qq[   pack "$format", \@_;],
-         "}",
+         "sub $packfunc", "{", @packcode, "}",
          "",
-         "sub $unpackfunc",
-         "{", 
-       qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
-       qq[   unpack "$format", \$_[0];],
-         "}" );
+         "sub $unpackfunc", "{", @unpackcode, "}" );
    } ];
 
    push_export $packfunc;
@@ -303,8 +334,6 @@ will be automatically detected.
 
 sub member_numeric
 {
-   my $self = shift;
-
    my $varname;
    my $membername;
    my $argindex;
@@ -344,6 +373,56 @@ sub member_numeric
             die "Cannot find a pack format for size $size sign $sign";
 
          $format .= $struct_formats{"$size$sign"};
+         $_[1] += $size;
+
+         return $format;
+      },
+   };
+}
+
+=item * member_strarray
+
+The field contains a NULL-padded string of characters. Its size will be
+automatically detected.
+
+=cut
+
+sub member_strarray
+{
+   my $varname;
+   my $membername;
+   my $argindex;
+
+   return {
+      set_names => sub { ( $varname, $membername ) = @_; },
+      set_arg => sub { $argindex = $_[0]++; },
+
+      gen_c => sub {
+         qq{printf("$membername@%td+%zu,", } .
+            "((char*)&$varname.$membername-(char*)&$varname), " . # offset
+            "sizeof($varname.$membername)" .                      # size
+            ");";
+      },
+      gen_format => sub {
+         my ( $def ) = @_;
+
+         my ( $member, $offs, $size ) = $def =~ m/^(\w+)@(\d+)\+(\d+)$/
+            or die "Could not parse member definition out of '$def'";
+
+         $member eq $membername or die "Expected definition of $membername but found $member instead";
+
+         my $format = "";
+         if( $offs > $_[1] ) {
+            my $pad = $offs - $_[1];
+
+            $format .= "x" x $pad;
+            $_[1] += $pad;
+         }
+         elsif( $offs < $_[1] ) {
+            die "Err.. need to go backwards for structure $varname member $member";
+         }
+
+         $format .= "Z$size";
          $_[1] += $size;
 
          return $format;

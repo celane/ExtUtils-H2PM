@@ -20,10 +20,11 @@ DESCRIPTION
     of the contents of C header files.
 
     It can also automatically build pack/unpack functions for simple
-    structure layouts, whose members are all simple integer fields. It is
-    not intended as a full replacement of arbitrary code written in XS
-    modules. If structures should contain pointers, or require special
-    custom handling, then likely an XS module will need to be written.
+    structure layouts, whose members are all simple integer or character
+    array fields. It is not intended as a full replacement of arbitrary code
+    written in XS modules. If structures should contain pointers, or require
+    special custom handling, then likely an XS module will need to be
+    written.
 
 FUNCTIONS
   module $name
@@ -65,12 +66,27 @@ FUNCTIONS
             tail, and the unpack function will return an extra string value
             containing it.
 
+    *       arg_style => STRING
+
+            Defines the style in which the functions take arguments or
+            return values. Defaults to "list", which take or return a list
+            of values in the given order. The other allowed value is
+            "hashref", where the pack function takes a HASH reference and
+            the unpack function returns one. Each will consist of keys named
+            after the structure members. If a data tail is included, it will
+            use the hash key of "_tail".
+
     The following structure member definitions are allowed:
 
     *       member_numeric
 
             The field contains a single signed or unsigned number. Its size
             and signedness will be automatically detected.
+
+    *       member_strarray
+
+            The field contains a NULL-padded string of characters. Its size
+            will be automatically detected.
 
     The structure definition results in two new functions being created,
     "pack_$name" and "unpack_$name", where $name is the name of the

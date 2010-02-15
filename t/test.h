@@ -17,3 +17,9 @@ struct msghdr
   char vers;
   /* hope there's a hole here */
 };
+
+struct idname
+{
+  int id;
+  char name[12];
+};
