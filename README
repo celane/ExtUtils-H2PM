@@ -66,6 +66,16 @@ FUNCTIONS
             tail, and the unpack function will return an extra string value
             containing it.
 
+    *       no_length_check => BOOL
+
+            If true, the generated unpack function will not first check the
+            length of its argument before attempting to unpack it. If the
+            buffer is not long enough to unpack all the required values, the
+            remaining ones will not be returned. This may be useful, for
+            example, in cases where various versions of a structure have
+            been designed, later versions adding extra members, but where
+            the exact version found may not be easy to determine beforehand.
+
     *       arg_style => STRING
 
             Defines the style in which the functions take arguments or
@@ -246,12 +256,11 @@ EXAMPLES
      }
 
 TODO
-    *   Consider more flexible structure members. Perhaps string-like
-        members that wrap fixed-size "char" arrays. With strings comes the
-        requirement to have members that store a size. This requires
-        cross-referential members. And while we're at it it might be nice to
-        have constant members; fill in constants without consuming arguments
-        when packing, assert the right value on unpacking.
+    *   Consider more structure members. With strings comes the requirement
+        to have members that store a size. This requires cross-referential
+        members. And while we're at it it might be nice to have constant
+        members; fill in constants without consuming arguments when packing,
+        assert the right value on unpacking.
 
 AUTHOR
     Paul Evans <leonerd@leonerd.org.uk>

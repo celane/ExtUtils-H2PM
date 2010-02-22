@@ -36,19 +36,21 @@ is_deeply( [ split m/\n/, $code ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
-push \@EXPORT_OK, 'pack_msghdr', 'unpack_msghdr';
 use Carp;
+push \@EXPORT_OK, 'pack_msghdr', 'unpack_msghdr';
 
 sub pack_msghdr
 {
    \@_ >= 2 or croak "usage: pack_msghdr(cmd, vers, [tail])";
-   pack "l c x3a*", \@_;
+   my \@v = \@_;
+   pack "l c x3a*", \@v;
 }
 
 sub unpack_msghdr
 {
    length \$_[0] >= 8 or croak "unpack_msghdr: expected 8 bytes";
-   unpack "l c x3a*", \$_[0];
+   my \@v = unpack "l c x3a*", \$_[0];
+   \@v;
 }
 
 1;

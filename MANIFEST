@@ -12,5 +12,6 @@ t/02structure-numeric.t
 t/03structure-strarray.t
 t/10structure-with-tail.t
 t/11structure-args-hashref.t
+t/12structure-no-length-check.t
 t/99pod.t
 t/test.h

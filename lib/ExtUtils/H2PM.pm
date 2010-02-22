@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -65,6 +65,8 @@ my @preamble;
 my @fragments;
 
 my $done_carp;
+
+my @perlcode;
 my @genblocks;
 
 my $export_mode; use_export_ok();
@@ -127,6 +129,13 @@ sub include
    }
 }
 
+# undocumented so far
+sub perlcode
+{
+   my ( $code ) = @_;
+   push @perlcode, $code;
+}
+
 =head2 constant $name, %args
 
 Adds a numerical constant.
@@ -184,6 +193,15 @@ If true, the structure is a header with more data behind it. The pack function
 takes an optional extra string value for the data tail, and the unpack
 function will return an extra string value containing it.
 
+=item * no_length_check => BOOL
+
+If true, the generated unpack function will not first check the length of its
+argument before attempting to unpack it. If the buffer is not long enough to
+unpack all the required values, the remaining ones will not be returned. This
+may be useful, for example, in cases where various versions of a structure
+have been designed, later versions adding extra members, but where the exact
+version found may not be easy to determine beforehand.
+
 =item * arg_style => STRING
 
 Defines the style in which the functions take arguments or return values.
@@ -206,7 +224,8 @@ sub structure
    my $packfunc   = $params{pack_func}   || "pack_$basename";
    my $unpackfunc = $params{unpack_func} || "unpack_$basename";
 
-   my $with_tail = $params{with_tail};
+   my $with_tail       = $params{with_tail};
+   my $no_length_check = $params{no_length_check};
 
    my $arg_style = $params{arg_style} || "list";
 
@@ -246,10 +265,12 @@ sub structure
 
       my $sizeof = shift @result;
 
+      my ( @postargs, @preret );
+
       foreach my $def ( @result ) {
          my $handler = shift @memberhandlers;
 
-         $format .= $handler->{gen_format}( $def, $curpos ) . " ";
+         $format .= $handler->{gen_format}( $def, $curpos, \@postargs, \@preret ) . " ";
       }
 
       if( $curpos < $sizeof ) {
@@ -262,41 +283,52 @@ sub structure
          $eq = ">=";
       }
 
-      my $carp = $done_carp++ ? "" : "use Carp;\n";
+      unshift( @perlcode, "use Carp;" ), $done_carp++ unless $done_carp;
 
-      my ( @packcode, @unpackcode );
+      my ( @argcode, @retcode );
       if( $arg_style eq "list" ) {
          my $members = join( ", ", @membernames, ( $with_tail ? "[tail]" : () ) );
 
-         @packcode = (
-            qq[   \@_ $eq $argindex or croak "usage: $packfunc($members)";],
-            qq[   pack "$format", \@_;] );
-         @unpackcode = (
-            qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
-            qq[   unpack "$format", \$_[0];] );
+         @argcode = (
+            qq{   \@_ $eq $argindex or croak "usage: $packfunc($members)";},
+            qq{   my \@v = \@_;} );
+         @retcode = (
+            qq{   \@v;} );
       }
       elsif( $arg_style eq "hashref" ) {
          my $qmembers = join( ", ", map { "'$_'" } @membernames, ( $with_tail ? "_tail" : () ) );
 
-         @packcode = (
-            qq[   ref(\$_[0]) eq "HASH" or croak "usage: $packfunc(\\%args)";],
-            qq[   pack "$format", \@{\$_[0]}{$qmembers};] );
-         @unpackcode = (
-            qq[   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";],
+         @argcode = (
+            qq{   ref(\$_[0]) eq "HASH" or croak "usage: $packfunc(\\%args)";},
+            qq(   my \@v = \@{\$_[0]}{$qmembers};) );
+         @retcode = (
             # Seems we can't easily do this without a temporary
-            qq[   my %ret;],
-            qq[   \@ret{$qmembers} = unpack "$format", \$_[0];],
-            qq[   \\%ret;] );
+            qq(   my %ret; \@ret{$qmembers} = \@v;),
+            qq{   \\%ret;} );
       }
       else {
          carp "Unrecognised arg_style $arg_style";
       }
 
-      $carp . join( "\n",
+      join( "\n",
          "",
-         "sub $packfunc", "{", @packcode, "}",
+         "sub $packfunc",
+         "{",
+         @argcode,
+         @postargs,
+         qq{   pack "$format", \@v;},
+         "}",
          "",
-         "sub $unpackfunc", "{", @unpackcode, "}" );
+         "sub $unpackfunc",
+         "{",
+         ( $no_length_check ? '' :
+            qq{   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";}
+         ),
+         qq{   my \@v = unpack "$format", \$_[0];},
+         @preret,
+         @retcode,
+         "}"
+      );
    } ];
 
    push_export $packfunc;
@@ -332,6 +364,8 @@ will be automatically detected.
 
 =cut
 
+my $done_u64;
+
 sub member_numeric
 {
    my $varname;
@@ -350,7 +384,7 @@ sub member_numeric
             ");";
       },
       gen_format => sub {
-         my ( $def ) = @_;
+         my ( $def, undef, $postarg, $preret ) = @_;
          #  ( undef, curpos ) = @_;
 
          my ( $member, $offs, $size, $sign ) = $def =~ m/^(\w+)@(\d+)\+(\d+)([us])$/
@@ -369,12 +403,45 @@ sub member_numeric
             die "Err.. need to go backwards for structure $varname member $member";
          }
 
-         exists $struct_formats{"$size$sign"} or
+         if( exists $struct_formats{"$size$sign"} ) {
+            $format .= $struct_formats{"$size$sign"};
+         }
+         elsif( $size == 8 and $sign eq "u" ) {
+            # 64bit int on a 64bit-challenged perl. We'll have to improvise
+
+            unless( $done_u64 ) {
+               my $hilo = pack("S",0x0201) eq "\x02\x01" ? "\$hi, \$lo" : "\$lo, \$hi";
+
+               perlcode join "\n",
+                  "require Math::BigInt;",
+                  "",
+                  "sub __pack_u64 {",
+                  "   my ( \$hi, \$lo ) = ( int(\$_[0] / 2**32), \$_[0] & 0xffffffff );",
+                  "   pack( \"L L\", $hilo );",
+                  "}",
+                  "",
+                  "sub __unpack_u64 {",
+                  "   my ( $hilo ) = unpack( \"L L\", \$_[0] );",
+                  "   return \$lo if \$hi == 0;",
+                  "   my \$n = Math::BigInt->new(\$hi); \$n <<= 32; \$n |= \$lo;",
+                  "   return \$n;",
+                  "}",
+                  "";
+
+               $done_u64++;
+            }
+
+            push @$postarg, "   \$v[$argindex] = __pack_u64( \$v[$argindex] );";
+            push @$preret,  "   \$v[$argindex] = __unpack_u64( \$v[$argindex] );";
+            
+
+            $format .= "a8";
+         }
+         else {
             die "Cannot find a pack format for size $size sign $sign";
+         }
 
-         $format .= $struct_formats{"$size$sign"};
          $_[1] += $size;
-
          return $format;
       },
    };
@@ -543,7 +610,10 @@ sub gen_perl
 
    undef @genblocks;
 
-   return $perl;
+   my @thisperlcode = @perlcode;
+   undef @perlcode;
+
+   return join "\n", @thisperlcode, $perl;
 }
 
 =head2 $perl = gen_output
@@ -714,8 +784,7 @@ file we can wrap these to actually expose a different API:
 
 =item *
 
-Consider more flexible structure members. Perhaps string-like members that
-wrap fixed-size C<char> arrays. With strings comes the requirement to have
+Consider more structure members. With strings comes the requirement to have
 members that store a size. This requires cross-referential members. And while
 we're at it it might be nice to have constant members; fill in constants
 without consuming arguments when packing, assert the right value on unpacking.

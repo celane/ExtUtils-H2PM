@@ -36,20 +36,21 @@ is_deeply( [ split m/\n/, $code ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
-push \@EXPORT_OK, 'pack_point', 'unpack_point';
 use Carp;
+push \@EXPORT_OK, 'pack_point', 'unpack_point';
 
 sub pack_point
 {
    ref(\$_[0]) eq "HASH" or croak "usage: pack_point(\\%args)";
-   pack "l l ", \@{\$_[0]}{'x', 'y'};
+   my \@v = \@{\$_[0]}{'x', 'y'};
+   pack "l l ", \@v;
 }
 
 sub unpack_point
 {
    length \$_[0] == 8 or croak "unpack_point: expected 8 bytes";
-   my %ret;
-   \@ret{'x', 'y'} = unpack "l l ", \$_[0];
+   my \@v = unpack "l l ", \$_[0];
+   my %ret; \@ret{'x', 'y'} = \@v;
    \\%ret;
 }
 

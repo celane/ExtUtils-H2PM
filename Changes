@@ -1,5 +1,11 @@
 Revision history for ExtUtils-H2PM
 
+0.05    CHANGES:
+         * Emulate pack/unpack 'Q' on 32bit perls to allow use of 64bit fields
+
+        BUGFIXES:
+         * Don't declare Test::Output as a dependency since it isn't required
+
 0.04    CHANGES:
          * Allow member elements to be character arrays
          * Allow generation of pack/unpack functions that use a hashref for

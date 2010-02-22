@@ -6,8 +6,7 @@ WriteMakefile
           'VERSION_FROM' => 'lib/ExtUtils/H2PM.pm',
           'PREREQ_PM' => {
                            'ExtUtils::CBuilder' => 0,
-                           'Test::More' => 0,
-                           'Test::Output' => 0
+                           'Test::More' => 0
                          },
           'INSTALLDIRS' => 'site',
           'EXE_FILES' => [],

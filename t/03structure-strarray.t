@@ -35,19 +35,21 @@ is_deeply( [ split m/\n/, $code ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
-push \@EXPORT_OK, 'pack_idname', 'unpack_idname';
 use Carp;
+push \@EXPORT_OK, 'pack_idname', 'unpack_idname';
 
 sub pack_idname
 {
    \@_ == 2 or croak "usage: pack_idname(id, name)";
-   pack "l Z12 ", \@_;
+   my \@v = \@_;
+   pack "l Z12 ", \@v;
 }
 
 sub unpack_idname
 {
    length \$_[0] == 16 or croak "unpack_idname: expected 16 bytes";
-   unpack "l Z12 ", \$_[0];
+   my \@v = unpack "l Z12 ", \$_[0];
+   \@v;
 }
 
 1;
