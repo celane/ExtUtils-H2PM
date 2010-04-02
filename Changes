@@ -1,5 +1,11 @@
 Revision history for ExtUtils-H2PM
 
+0.06    BUGFIXES:
+         * Accept member names containing '.'
+         * gen_output() before opening the output file in case it fails
+         * Ensure warning-free handling of __unpack_u64 when given empty
+           string, in case of no_length_check
+
 0.05    CHANGES:
          * Emulate pack/unpack 'Q' on 32bit perls to allow use of 64bit fields
 

@@ -255,6 +255,34 @@ EXAMPLES
         return ( $lat + $lat_fine/1_000_000, $long + $long_fine/1_000_000 );
      }
 
+    Sometimes, a structure will contain members which are themselves
+    structures. Suppose a different definition of the above address, which
+    at the C layer is defined as
+
+     struct angle
+     {
+        short         deg;
+        unsigned long fine;
+     };
+
+     struct sockaddr_ml
+     {
+        short        ml_family;
+        struct angle ml_lat, ml_long;
+     };
+
+    We can instead "flatten" this structure tree to obtain the five fields
+    by naming the sub-members of the outer structure:
+
+     structure "struct sockaddr_ml",
+        members => [
+           "ml_family"    => member_numeric,
+           "ml_lat.deg"   => member_numeric,
+           "ml_lat.fine"  => member_numeric,
+           "ml_long.deg"  => member_numeric,
+           "ml_long.fine" => member_numeric,
+        ];
+
 TODO
     *   Consider more structure members. With strings comes the requirement
         to have members that store a size. This requires cross-referential

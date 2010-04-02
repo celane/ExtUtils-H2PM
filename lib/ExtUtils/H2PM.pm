@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -387,7 +387,7 @@ sub member_numeric
          my ( $def, undef, $postarg, $preret ) = @_;
          #  ( undef, curpos ) = @_;
 
-         my ( $member, $offs, $size, $sign ) = $def =~ m/^(\w+)@(\d+)\+(\d+)([us])$/
+         my ( $member, $offs, $size, $sign ) = $def =~ m/^([\w.]+)@(\d+)\+(\d+)([us])$/
             or die "Could not parse member definition out of '$def'";
 
          $member eq $membername or die "Expected definition of $membername but found $member instead";
@@ -421,6 +421,7 @@ sub member_numeric
                   "}",
                   "",
                   "sub __unpack_u64 {",
+                  "   length \$_[0] == 8 or return undef;", # in case of no_length_check
                   "   my ( $hilo ) = unpack( \"L L\", \$_[0] );",
                   "   return \$lo if \$hi == 0;",
                   "   my \$n = Math::BigInt->new(\$hi); \$n <<= 32; \$n |= \$lo;",
@@ -473,7 +474,7 @@ sub member_strarray
       gen_format => sub {
          my ( $def ) = @_;
 
-         my ( $member, $offs, $size ) = $def =~ m/^(\w+)@(\d+)\+(\d+)$/
+         my ( $member, $offs, $size ) = $def =~ m/^([\w.]+)@(\d+)\+(\d+)$/
             or die "Could not parse member definition out of '$def'";
 
          $member eq $membername or die "Expected definition of $membername but found $member instead";
@@ -647,9 +648,11 @@ sub write_output
 { 
    my ( $filename ) = @_;
 
+   my $output = gen_output();
+
    open( my $outfile, ">", $filename ) or die "Cannot write '$filename' - $!";
 
-   print $outfile gen_output();
+   print $outfile $output;
 }
 
 # Keep perl happy; keep Britain tidy
@@ -777,6 +780,34 @@ file we can wrap these to actually expose a different API:
 
     return ( $lat + $lat_fine/1_000_000, $long + $long_fine/1_000_000 );
  }
+
+Sometimes, a structure will contain members which are themselves structures.
+Suppose a different definition of the above address, which at the C layer is
+defined as
+
+ struct angle
+ {
+    short         deg;
+    unsigned long fine;
+ };
+
+ struct sockaddr_ml
+ {
+    short        ml_family;
+    struct angle ml_lat, ml_long;
+ };
+
+We can instead "flatten" this structure tree to obtain the five fields by
+naming the sub-members of the outer structure:
+
+ structure "struct sockaddr_ml",
+    members => [
+       "ml_family"    => member_numeric,
+       "ml_lat.deg"   => member_numeric,
+       "ml_lat.fine"  => member_numeric,
+       "ml_long.deg"  => member_numeric,
+       "ml_long.fine" => member_numeric,
+    ];
 
 =head1 TODO
 
