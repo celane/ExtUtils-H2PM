@@ -1,5 +1,11 @@
 Revision history for ExtUtils-H2PM
 
+0.07    CHANGES:
+         * Allow constants and structures to be guarded by #ifdef preprocessor
+
+        BUGFIXES:
+         * Avoid C99's %zu and %td printf(3) formats
+
 0.06    BUGFIXES:
          * Accept member names containing '.'
          * gen_output() before opening the output file in case it fails

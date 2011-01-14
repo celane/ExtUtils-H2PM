@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2010 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2010-2011 -- leonerd@leonerd.org.uk
 
 package ExtUtils::H2PM;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -149,6 +149,11 @@ The following additional named arguments are also recognised:
 Use the given name for the generated constant function. If not specified, the
 C name for the constant will be used.
 
+=item * ifdef => STRING
+
+If present, guard the constant with an C<#ifdef STRING> preprocessor macro. If
+the given string is not defined, no constant will be generated.
+
 =back
 
 =cut
@@ -162,12 +167,17 @@ sub constant
 
    push @fragments, qq{  printf("$constname=%ld\\n", (long)$constname);};
 
+   if( my $symbol = $args{ifdef} ) {
+      $fragments[-1] = "#ifdef $symbol\n$fragments[-1]\n#endif";
+   }
+
    push @genblocks, [ $constname => sub {
       my ( $result ) = @_;
+      return () unless defined $result;
+
+      push_export $name;
       "use constant $name => $result;";
    } ];
-
-   push_export $name;
 }
 
 =head2 structure $name, %args
@@ -211,6 +221,11 @@ reference and the unpack function returns one. Each will consist of keys named
 after the structure members. If a data tail is included, it will use the hash
 key of C<_tail>.
 
+=item * ifdef => STRING
+
+If present, guard the structure with an C<#ifdef STRING> preprocessor macro.
+If the given string is not defined, no functions will be generated.
+
 =back
 
 =cut
@@ -247,16 +262,20 @@ sub structure
       $handler->{set_arg}( $argindex );
    }
 
+   push @fragments, "#ifdef $params{ifdef}" if $params{ifdef};
    push @fragments,
       "  {",
       "    $name $basename;", 
-    qq[    printf("$basename=%zu,", sizeof($basename));],
+    qq[    printf("$basename=%lu,", (unsigned long)sizeof($basename));],
       ( map { "    " . $_->{gen_c}->() } @memberhandlers ),
     qq[    printf("\\n");],
       "  }";
+   push @fragments, "#endif" if $params{ifdef};
 
    push @genblocks, [ $basename => sub {
       my ( $result ) = @_;
+      return () unless defined $result;
+
       my @result = split m/,/, $result;
 
       my $curpos = 0;
@@ -310,6 +329,9 @@ sub structure
          carp "Unrecognised arg_style $arg_style";
       }
 
+      push_export $packfunc;
+      push_export $unpackfunc;
+
       join( "\n",
          "",
          "sub $packfunc",
@@ -330,9 +352,6 @@ sub structure
          "}"
       );
    } ];
-
-   push_export $packfunc;
-   push_export $unpackfunc;
 }
 
 =pod
@@ -377,10 +396,10 @@ sub member_numeric
       set_arg => sub { $argindex = $_[0]++; },
 
       gen_c => sub {
-         qq{printf("$membername@%td+%zu%c,", } . 
-            "((char*)&$varname.$membername-(char*)&$varname), " . # offset
-            "sizeof($varname.$membername), " .                    # size
-            "($varname.$membername=-1)>0?'u':'s'" .               # signedness
+         qq{printf("$membername@%ld+%lu%c,", } . 
+            "(long)((char*)&$varname.$membername-(char*)&$varname), " . # offset
+            "(unsigned long)sizeof($varname.$membername), " .           # size
+            "($varname.$membername=-1)>0?'u':'s'" .                     # signedness
             ");";
       },
       gen_format => sub {
@@ -466,9 +485,9 @@ sub member_strarray
       set_arg => sub { $argindex = $_[0]++; },
 
       gen_c => sub {
-         qq{printf("$membername@%td+%zu,", } .
-            "((char*)&$varname.$membername-(char*)&$varname), " . # offset
-            "sizeof($varname.$membername)" .                      # size
+         qq{printf("$membername@%ld+%lu,", } .
+            "(long)((char*)&$varname.$membername-(char*)&$varname), " . # offset
+            "(unsigned long)sizeof($varname.$membername)" .             # size
             ");";
       },
       gen_format => sub {
@@ -593,6 +612,15 @@ sub gen_perl
 
    my $perl = "";
 
+   my @bodylines;
+
+   # Evaluate these first, so they have a chance to push_export()
+   foreach my $genblock ( @genblocks ) {
+      my ( $key, $code ) = @$genblock;
+
+      push @bodylines, $code->( $results{$key} );
+   }
+
    if( @exports ) {
       $perl .= "push \@EXPORT, " . join( ", ", map { "'$_'" } @exports ) . ";\n";
       undef @exports;
@@ -603,11 +631,7 @@ sub gen_perl
       undef @exports_ok;
    }
 
-   foreach my $genblock ( @genblocks ) {
-      my ( $key, $code ) = @$genblock;
-
-      $perl .= $code->( $results{$key} ) . "\n";
-   }
+   $perl .= join "", map { "$_\n" } @bodylines;
 
    undef @genblocks;
 

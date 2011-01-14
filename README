@@ -45,6 +45,12 @@ FUNCTIONS
             Use the given name for the generated constant function. If not
             specified, the C name for the constant will be used.
 
+    *       ifdef => STRING
+
+            If present, guard the constant with an "#ifdef STRING"
+            preprocessor macro. If the given string is not defined, no
+            constant will be generated.
+
   structure $name, %args
     Adds a structure definition. This requires a named argument, "members".
     This should be an ARRAY ref containing an even number of name-definition
@@ -85,6 +91,12 @@ FUNCTIONS
             the unpack function returns one. Each will consist of keys named
             after the structure members. If a data tail is included, it will
             use the hash key of "_tail".
+
+    *       ifdef => STRING
+
+            If present, guard the structure with an "#ifdef STRING"
+            preprocessor macro. If the given string is not defined, no
+            functions will be generated.
 
     The following structure member definitions are allowed:
 

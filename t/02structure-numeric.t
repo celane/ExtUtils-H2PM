@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 9;
+use Test::More tests => 10;
 
 use ExtUtils::H2PM;
 
@@ -167,3 +167,24 @@ is( TEST::pack_llq(1,2,3),
 is_deeply( [ TEST::unpack_llq( BIG_ENDIAN ? "\0\0\0\1\0\0\0\2\0\0\0\0\0\0\0\3" : "\1\0\0\0\2\0\0\0\3\0\0\0\0\0\0\0" ) ],
    [ 1, 2, 3 ],
    'unpack_llq()' );
+
+$code = do {
+         module "TEST";
+         include "t/test.h", local => 1;
+         structure "struct missing",
+            members => [
+               none => member_numeric,
+            ],
+            ifdef => "HAS_STRUCT_MISSING";
+         gen_output;
+      };
+
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
+package TEST;
+# This module was generated automatically by ExtUtils::H2PM from $0
+
+
+1;
+EOPERL
+      'Missing structure' );

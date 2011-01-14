@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 7;
+use Test::More tests => 8;
 
 use ExtUtils::H2PM;
 
@@ -115,3 +115,21 @@ use constant STATIC_CONSTANT => 30;
 1;
 EOPERL
       'Static constant' );
+
+$code = do {
+         module "TEST";
+         use_export;
+         include "t/test.h", local => 1;
+         constant "MISSING_CONSTANT", ifdef => "MISSING_CONSTANT";
+         gen_output;
+      };
+
+is_deeply( [ split m/\n/, $code ],
+    [ split m/\n/, <<"EOPERL" ],
+package TEST;
+# This module was generated automatically by ExtUtils::H2PM from $0
+
+
+1;
+EOPERL
+      'Missing constant' );
