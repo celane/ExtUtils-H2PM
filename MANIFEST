@@ -15,3 +15,4 @@ t/11structure-args-hashref.t
 t/12structure-no-length-check.t
 t/99pod.t
 t/test.h
+META.json

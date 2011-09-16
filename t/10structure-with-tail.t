@@ -48,7 +48,7 @@ sub pack_msghdr
 
 sub unpack_msghdr
 {
-   length \$_[0] >= 8 or croak "unpack_msghdr: expected 8 bytes";
+   length \$_[0] >= 8 or croak "unpack_msghdr: expected 8 bytes, got " . length \$_[0];
    my \@v = unpack "l c x3a*", \$_[0];
    \@v;
 }

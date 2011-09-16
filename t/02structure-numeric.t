@@ -47,7 +47,7 @@ sub pack_point
 
 sub unpack_point
 {
-   length \$_[0] == 8 or croak "unpack_point: expected 8 bytes";
+   length \$_[0] == 8 or croak "unpack_point: expected 8 bytes, got " . length \$_[0];
    my \@v = unpack "l l ", \$_[0];
    \@v;
 }
@@ -98,7 +98,7 @@ sub point_packing_function
 
 sub point_unpacking_function
 {
-   length \$_[0] == 8 or croak "point_unpacking_function: expected 8 bytes";
+   length \$_[0] == 8 or croak "point_unpacking_function: expected 8 bytes, got " . length \$_[0];
    my \@v = unpack "l l ", \$_[0];
    \@v;
 }
@@ -135,7 +135,7 @@ sub pack_msghdr
 
 sub unpack_msghdr
 {
-   length \$_[0] == 8 or croak "unpack_msghdr: expected 8 bytes";
+   length \$_[0] == 8 or croak "unpack_msghdr: expected 8 bytes, got " . length \$_[0];
    my \@v = unpack "l c x3", \$_[0];
    \@v;
 }

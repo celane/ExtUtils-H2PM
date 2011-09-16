@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -344,7 +344,7 @@ sub structure
          "sub $unpackfunc",
          "{",
          ( $no_length_check ? '' :
-            qq{   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes";}
+            qq{   length \$_[0] $eq $sizeof or croak "$unpackfunc: expected $sizeof bytes, got " . length \$_[0];}
          ),
          qq{   my \@v = unpack "$format", \$_[0];},
          @preret,
@@ -679,9 +679,6 @@ sub write_output
    print $outfile $output;
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 EXAMPLES
 
 Normally this module would be used by another module at build time, to
@@ -849,3 +846,7 @@ without consuming arguments when packing, assert the right value on unpacking.
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
+
+=cut
+
+0x55AA;

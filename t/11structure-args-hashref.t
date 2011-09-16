@@ -48,7 +48,7 @@ sub pack_point
 
 sub unpack_point
 {
-   length \$_[0] == 8 or croak "unpack_point: expected 8 bytes";
+   length \$_[0] == 8 or croak "unpack_point: expected 8 bytes, got " . length \$_[0];
    my \@v = unpack "l l ", \$_[0];
    my %ret; \@ret{'x', 'y'} = \@v;
    \\%ret;

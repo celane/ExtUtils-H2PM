@@ -47,7 +47,7 @@ sub pack_idname
 
 sub unpack_idname
 {
-   length \$_[0] == 16 or croak "unpack_idname: expected 16 bytes";
+   length \$_[0] == 16 or croak "unpack_idname: expected 16 bytes, got " . length \$_[0];
    my \@v = unpack "l Z12 ", \$_[0];
    \@v;
 }
