@@ -1,5 +1,12 @@
 Revision history for ExtUtils-H2PM
 
+0.09    CHANGES:
+         * Allow member elements to be constants, which don't consume an input
+           value or return one
+
+        BUGFIXES:
+         * Specify 'signed char' in test.h to be specific to compilers (RT87583)
+
 0.08    CHANGES:
          * Unpack functions now print the actual as well as expected length on
            failures

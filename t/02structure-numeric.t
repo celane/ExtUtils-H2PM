@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 10;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -188,3 +190,5 @@ package TEST;
 1;
 EOPERL
       'Missing structure' );
+
+done_testing;

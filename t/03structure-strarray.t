@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 4;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -67,3 +69,5 @@ is( TEST::pack_idname(0x1234, "Hello"),
 is_deeply( [ TEST::unpack_idname( BIG_ENDIAN ? "\0\0\x12\x34Hello\0\0\0\0\0\0\0" : "\x34\x12\0\0Hello\0\0\0\0\0\0\0" ) ],
    [ 0x1234, "Hello" ],
    'unpack_idname()' );
+
+done_testing;

@@ -3,9 +3,9 @@ abstract: 'automatically generate perl modules to wrap C header files'
 author:
   - 'Paul Evans <leonerd@leonerd.org.uk>'
 build_requires:
-  Test::More: 0
+  Test::More: 0.88
 dynamic_config: 1
-generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.112150'
+generated_by: 'Module::Build version 0.4005, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -14,10 +14,10 @@ name: ExtUtils-H2PM
 provides:
   ExtUtils::H2PM:
     file: lib/ExtUtils/H2PM.pm
-    version: 0.08
+    version: 0.09
 requires:
   Exporter: 5.57
   ExtUtils::CBuilder: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.08
+version: 0.09

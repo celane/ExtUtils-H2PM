@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 4;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -68,3 +70,5 @@ is( TEST::pack_msghdr(0x1234, 0x56, "hello\0"),
 is_deeply( [ TEST::unpack_msghdr( BIG_ENDIAN ? "\0\0\x12\x34\x56\0\0\0hello\0" : "\x34\x12\0\0\x56\0\0\0hello\0" ) ],
    [ 0x1234, 0x56, "hello\0" ],
    'unpack_point()' );
+
+done_testing;

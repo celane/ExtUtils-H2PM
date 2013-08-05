@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 8;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -133,3 +135,5 @@ package TEST;
 1;
 EOPERL
       'Missing constant' );
+
+done_testing;

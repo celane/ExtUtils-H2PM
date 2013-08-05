@@ -16,7 +16,7 @@ struct point
 struct msghdr
 {
   int cmd;
-  char vers;
+  signed char vers; // Be specific on signedness
   /* hope there's a hole here */
 };
 

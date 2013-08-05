@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 2;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -36,3 +38,5 @@ ok( evalordie("no strict; $code"), 'Code evaluates successfully' );
 is_deeply( [ TEST::unpack_point( BIG_ENDIAN ? "\0\0\x12\x34\0\0\x56\x78\0\0\x9a\xbc" : "\x34\x12\0\0\x78\x56\0\0\xbc\x9a\0\0" ) ],
    [ 0x1234, 0x5678 ],
    'unpack_point()' );
+
+done_testing;

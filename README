@@ -1,10 +1,10 @@
 NAME
-    "ExtUtils::H2PM" - automatically generate perl modules to wrap C header
+    `ExtUtils::H2PM' - automatically generate perl modules to wrap C header
     files
 
 DESCRIPTION
     This module assists in generating wrappers around system functionallity,
-    such as "socket()" types or "ioctl()" calls, where the only interesting
+    such as `socket()' types or `ioctl()' calls, where the only interesting
     features required are the values of some constants or layouts of
     structures normally only known to the C header files. Rather than
     writing an entire XS module just to contain some constants and
@@ -13,8 +13,8 @@ DESCRIPTION
     and structure utility functions. The module then requires no XS module
     to be loaded at run time.
 
-    In comparison to h2ph, "C::Scan::Constants", and so on, this module
-    works by generating a small C program containing "printf()" lines to
+    In comparison to h2ph, `C::Scan::Constants', and so on, this module
+    works by generating a small C program containing `printf()' lines to
     output the values of the constants, compiling it, and running it. This
     allows it to operate without needing tricky syntax parsing or guessing
     of the contents of C header files.
@@ -29,7 +29,7 @@ DESCRIPTION
 FUNCTIONS
   module $name
     Sets the name of the perl module to generate. This will apply a
-    "package" header.
+    `package' header.
 
   include $file
     Adds a file to the list of headers which will be included by the C
@@ -40,40 +40,34 @@ FUNCTIONS
 
     The following additional named arguments are also recognised:
 
-    *       name => STRING
-
+    * name => STRING
             Use the given name for the generated constant function. If not
             specified, the C name for the constant will be used.
 
-    *       ifdef => STRING
-
-            If present, guard the constant with an "#ifdef STRING"
+    * ifdef => STRING
+            If present, guard the constant with an `#ifdef STRING'
             preprocessor macro. If the given string is not defined, no
             constant will be generated.
 
   structure $name, %args
-    Adds a structure definition. This requires a named argument, "members".
+    Adds a structure definition. This requires a named argument, `members'.
     This should be an ARRAY ref containing an even number of name-definition
     pairs. The first of each pair should be a member name. The second should
     be one of the following structure member definitions.
 
     The following additional named arguments are also recognised:
 
-    *       pack_func => STRING
-
-    *       unpack_func => STRING
-
+    * pack_func => STRING
+    * unpack_func => STRING
             Use the given names for the generated pack or unpack functions.
 
-    *       with_tail => BOOL
-
+    * with_tail => BOOL
             If true, the structure is a header with more data behind it. The
             pack function takes an optional extra string value for the data
             tail, and the unpack function will return an extra string value
             containing it.
 
-    *       no_length_check => BOOL
-
+    * no_length_check => BOOL
             If true, the generated unpack function will not first check the
             length of its argument before attempting to unpack it. If the
             buffer is not long enough to unpack all the required values, the
@@ -82,62 +76,66 @@ FUNCTIONS
             been designed, later versions adding extra members, but where
             the exact version found may not be easy to determine beforehand.
 
-    *       arg_style => STRING
-
+    * arg_style => STRING
             Defines the style in which the functions take arguments or
-            return values. Defaults to "list", which take or return a list
+            return values. Defaults to `list', which take or return a list
             of values in the given order. The other allowed value is
-            "hashref", where the pack function takes a HASH reference and
+            `hashref', where the pack function takes a HASH reference and
             the unpack function returns one. Each will consist of keys named
             after the structure members. If a data tail is included, it will
-            use the hash key of "_tail".
+            use the hash key of `_tail'.
 
-    *       ifdef => STRING
-
-            If present, guard the structure with an "#ifdef STRING"
+    * ifdef => STRING
+            If present, guard the structure with an `#ifdef STRING'
             preprocessor macro. If the given string is not defined, no
             functions will be generated.
 
     The following structure member definitions are allowed:
 
-    *       member_numeric
-
+    * member_numeric
             The field contains a single signed or unsigned number. Its size
             and signedness will be automatically detected.
 
-    *       member_strarray
-
+    * member_strarray
             The field contains a NULL-padded string of characters. Its size
             will be automatically detected.
 
+    * member_constant($code)
+            The field contains a single number as for `member_numeric'.
+            Instead of consuming/returning a value in the arguments list,
+            this member will be packed from an expression, or asserted that
+            it contains the given value. The string `$code' will be inserted
+            into the generated pack and unpack functions, so it can be used
+            for constants generated by the `constant' directive.
+
     The structure definition results in two new functions being created,
-    "pack_$name" and "unpack_$name", where $name is the name of the
-    structure (with the leading "struct" prefix stripped). These behave
-    similarly to the familiar functions such as "pack_sockaddr_in"; the
-    "pack_" function will take a list of fields and return a packed string,
-    the "unpack_" function will take a string and return a list of fields.
+    `pack_$name' and `unpack_$name', where `$name' is the name of the
+    structure (with the leading `struct' prefix stripped). These behave
+    similarly to the familiar functions such as `pack_sockaddr_in'; the
+    `pack_' function will take a list of fields and return a packed string,
+    the `unpack_' function will take a string and return a list of fields.
 
   no_export, use_export, use_export_ok
-    Controls the export behaviour of the generated symbols. "no_export"
+    Controls the export behaviour of the generated symbols. `no_export'
     creates symbols that are not exported by their package, they must be
-    used fully- qualified. "use_export" creates symbols that are exported by
-    default. "use_export_ok" creates symbols that are exported if they are
-    specifically requested at "use" time.
+    used fully- qualified. `use_export' creates symbols that are exported by
+    default. `use_export_ok' creates symbols that are exported if they are
+    specifically requested at `use' time.
 
     The mode can be changed at any time to affect only the symbols that
-    follow it. It defaults to "use_export_ok".
+    follow it. It defaults to `use_export_ok'.
 
   $perl = gen_output
     Returns the generated perl code. This is used internally for testing
     purposes but normally would not be necessary; see instead
-    "write_output".
+    `write_output'.
 
   write_output $filename
     Write the generated perl code into the named file. This would normally
     be used as the last function in the containing script, to generate the
-    output file. In the case of "ExtUtils::MakeMaker" or "Module::Build"
+    output file. In the case of `ExtUtils::MakeMaker' or `Module::Build'
     invoking the script, the path to the file to be generated should be
-    given in $ARGV[0]. Normally, therefore, the script would end with
+    given in `$ARGV[0]'. Normally, therefore, the script would end with
 
      write_output $ARGV[0];
 
@@ -226,7 +224,7 @@ EXAMPLES
     semantics we wish to present to perl modules using this extension
     wrapper. Socket address structures typically contain their address
     family as the first member, whereas this detail isn't exposed by, for
-    example, the "sockaddr_in" and "sockaddr_un" functions. To cope with
+    example, the `sockaddr_in' and `sockaddr_un' functions. To cope with
     this case, the low-level structure packing and unpacking functions can
     be generated with a different name, and wrapped in higher-level
     functions in the main code. For example, in Moonlaser_const.pm.PL:

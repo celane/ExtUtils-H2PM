@@ -1,7 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use Test::More tests => 4;
+use warnings;
+
+use Test::More;
 
 use ExtUtils::H2PM;
 
@@ -69,3 +71,5 @@ is( TEST::pack_point( { x => 0x1234, y => 0x5678 } ),
 is_deeply( TEST::unpack_point( BIG_ENDIAN ? "\0\0\x12\x34\0\0\x56\x78" : "\x34\x12\0\0\x78\x56\0\0" ),
    { x => 0x1234, y => 0x5678 },
    'unpack_point()' );
+
+done_testing;
