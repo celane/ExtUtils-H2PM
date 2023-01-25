@@ -27,6 +27,7 @@ package TEST;
 # This module was generated automatically by ExtUtils::H2PM from t/04structure-constant.t
 
 use Carp;
+use Exporter 'import';
 push \@EXPORT_OK, 'ENUMERATED_CONSTANT', 'pack_idname', 'unpack_idname';
 use constant ENUMERATED_CONSTANT => 20;
 

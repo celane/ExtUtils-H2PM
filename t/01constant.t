@@ -29,6 +29,7 @@ is_deeply( [ split m/\n/, $code ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
+use Exporter 'import';
 push \@EXPORT_OK, 'DEFINED_CONSTANT';
 use constant DEFINED_CONSTANT => 10;
 
@@ -56,6 +57,7 @@ is_deeply( [ split m/\n/, $code ],
 package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
+use Exporter 'import';
 push \@EXPORT_OK, 'CONSTANT';
 use constant CONSTANT => 10;
 

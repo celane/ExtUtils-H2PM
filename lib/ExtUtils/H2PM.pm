@@ -663,11 +663,13 @@ sub gen_perl
    }
 
    if( @exports ) {
-      $perl .= "push \@EXPORT, " . join( ", ", map { "'$_'" } @exports ) . ";\n";
-      undef @exports;
+       $perl .=  "use Exporter 'import';\n";
+       $perl .= "push \@EXPORT, " . join( ", ", map { "'$_'" } @exports ) . ";\n";
+       undef @exports;
    }
 
    if( @exports_ok ) {
+       $perl .=  "use Exporter 'import';\n";
       $perl .= "push \@EXPORT_OK, " . join( ", ", map { "'$_'" } @exports_ok ) . ";\n";
       undef @exports_ok;
    }

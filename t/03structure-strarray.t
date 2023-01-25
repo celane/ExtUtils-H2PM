@@ -38,6 +38,7 @@ package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
 use Carp;
+use Exporter 'import';
 push \@EXPORT_OK, 'pack_idname', 'unpack_idname';
 
 sub pack_idname

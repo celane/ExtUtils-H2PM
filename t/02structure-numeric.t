@@ -38,6 +38,7 @@ package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
 use Carp;
+use Exporter 'import';
 push \@EXPORT_OK, 'pack_point', 'unpack_point';
 
 sub pack_point
@@ -89,6 +90,7 @@ package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
 use Carp;
+use Exporter 'import';
 push \@EXPORT_OK, 'point_packing_function', 'point_unpacking_function';
 
 sub point_packing_function
@@ -126,6 +128,7 @@ package TEST;
 # This module was generated automatically by ExtUtils::H2PM from $0
 
 use Carp;
+use Exporter 'import';
 push \@EXPORT_OK, 'pack_msghdr', 'unpack_msghdr';
 
 sub pack_msghdr
